@@ -1,0 +1,67 @@
+
+name: Build ZXZ Launcher APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ZXZ Launcher
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install \
+            "platforms;android-34" \
+            "platforms;android-35" \
+            "build-tools;34.0.0" \
+            "build-tools;35.0.0"
+
+      - name: Extract source
+        run: |
+          unzip -q ZXZLauncher-1.1.0-source.zip -d source
+
+      - name: Verify project
+        run: |
+          test -f source/ZXZLauncher/settings.gradle.kts
+          test -f source/ZXZLauncher/build.gradle.kts
+          test -f source/ZXZLauncher/app/build.gradle.kts
+          test -f source/ZXZLauncher/app/src/main/AndroidManifest.xml
+          echo "Project structure verified"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build Debug APK
+        working-directory: source/ZXZLauncher
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZXZ-Launcher-APK
+          path: source/ZXZLauncher/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
